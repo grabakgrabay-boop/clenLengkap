@@ -49,8 +49,9 @@ jobs:
         run: |
           F=$(ls app/android/app/build.gradle.kts app/android/app/build.gradle 2>/dev/null | head -1)
           sed -i -E 's/minSdk(Version)?[ =]+flutter\.minSdkVersion/minSdk = 30/' "$F"
-          sed -i -E 's/compileSdk(Version)?[ =]+flutter\.compileSdkVersion/compileSdk = 36/' "$F"
+          sed -i -E 's/compileSdk(Version)?[ =]+flutter\.compileSdkVersion/compileSdk = 37/' "$F"
           grep -nE "minSdk|compileSdk" "$F"
+          printf '\nandroid.suppressUnsupportedCompileSdk=37\n' >> app/android/gradle.properties
 
       - name: Pasang paket Flutter
         working-directory: app
