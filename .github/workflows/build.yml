@@ -1,0 +1,77 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Buat kerangka proyek Flutter
+        run: flutter create --org com.example --project-name cleanerpro --platforms android app
+
+      - name: Pasang kode sumber
+        run: |
+          rm -rf app/lib && cp -r lib app/lib
+          KT=app/android/app/src/main/kotlin/com/example/cleanerpro
+          mkdir -p "$KT"
+          cp android/MainActivity.kt "$KT/MainActivity.kt"
+          cp -r assets app/assets
+          cp flutter_launcher_icons.yaml app/flutter_launcher_icons.yaml
+
+      - name: Tambah izin di AndroidManifest
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          p = pathlib.Path('app/android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          perm = re.sub(r'<!--.*?-->', '', pathlib.Path('android/AndroidManifest_tambahan.xml').read_text(), flags=re.S).strip()
+          s = s.replace('<application', perm + '\n    <application', 1)
+          s = s.replace('android:label="cleanerpro"', 'android:label="Cleaner Pro"')
+          p.write_text(s)
+          PY
+
+      - name: Atur minSdk 30
+        run: |
+          F=$(ls app/android/app/build.gradle.kts app/android/app/build.gradle 2>/dev/null | head -1)
+          sed -i -E 's/minSdk(Version)?[ =]+flutter\.minSdkVersion/minSdk = 30/' "$F"
+          grep -n "minSdk" "$F"
+
+      - name: Pasang paket Flutter
+        working-directory: app
+        run: |
+          flutter pub add permission_handler path_provider crypto
+          flutter pub add dev:flutter_launcher_icons
+          python3 - <<'PY'
+          p = 'pubspec.yaml'
+          s = open(p).read()
+          s = s.replace('uses-material-design: true', 'uses-material-design: true\n  assets:\n    - assets/', 1)
+          open(p, 'w').write(s)
+          PY
+
+      - name: Buat ikon aplikasi
+        working-directory: app
+        run: dart run flutter_launcher_icons
+
+      - name: Build APK
+        working-directory: app
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CleanerPro-APK
+          path: app/build/app/outputs/flutter-apk/app-release.apk
