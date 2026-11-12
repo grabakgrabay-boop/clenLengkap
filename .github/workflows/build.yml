@@ -45,11 +45,12 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Atur minSdk 30
+      - name: Atur minSdk dan compileSdk
         run: |
           F=$(ls app/android/app/build.gradle.kts app/android/app/build.gradle 2>/dev/null | head -1)
           sed -i -E 's/minSdk(Version)?[ =]+flutter\.minSdkVersion/minSdk = 30/' "$F"
-          grep -n "minSdk" "$F"
+          sed -i -E 's/compileSdk(Version)?[ =]+flutter\.compileSdkVersion/compileSdk = 36/' "$F"
+          grep -nE "minSdk|compileSdk" "$F"
 
       - name: Pasang paket Flutter
         working-directory: app
